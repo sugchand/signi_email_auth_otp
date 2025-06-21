@@ -1,5 +1,5 @@
 [project]
-name = "signi_email_otp"
+name = "signi_email_auth_otp"
 version = "0.1.0"
 description = "Email OTP and JWT tracking service"
 authors = [
