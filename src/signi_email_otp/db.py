@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 from .config import DB_URL, MAX_CONN
 
-engine = create_engine(DB_URL, pool_size=MAX_CONN, max_overflow=MAX_CONN+5)
+engine = create_engine(DB_URL, pool_size=MAX_CONN, max_overflow=MAX_CONN + 5)
 SessionLocal = sessionmaker(bind=engine)
 
 

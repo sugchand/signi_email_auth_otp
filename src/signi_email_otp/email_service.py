@@ -22,10 +22,7 @@ def send_otp_email(
             server.login(email_from, email_password)
             server.sendmail(email_from, [email_to], msg.as_string())
             logger.info(
-                (
-                    f"Email sent successfully to {email_to} "
-                    f"with subject '{subject}'"
-                )
+                (f"Email sent successfully to {email_to} " f"with subject '{subject}'")
             )
             return None
     except Exception as e:

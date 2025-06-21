@@ -7,9 +7,7 @@ def get_env(key, default=None):
         logger.debug(f"Environment variable {key} found: {os.environ[key]}")
         return os.environ[key]
     if default is not None:
-        logger.debug(
-            f"Environment variable {key} not found, using default: {default}"
-        )
+        logger.debug(f"Environment variable {key} not found, using default: {default}")
         return default
     raise KeyError(f"{key} not found in environment")
 
@@ -31,10 +29,7 @@ SMTP_FROM_EMAIL = get_env("SMTP_FROM_EMAIL", "test@test.com")
 SMTP_FROM_PASSWORD = get_env("SMTP_PASSWORD", "changeme")
 
 # Database configuration
-DB_URL = get_env(
-    "DATABASE_URL",
-    "postgresql://user:pass@localhost:5432/auth_db"
-)
+DB_URL = get_env("DATABASE_URL", "postgresql://user:pass@localhost:5432/auth_db")
 MAX_CONN = int(get_env("DB_POOL_MAX_CONN", 5))
 
 

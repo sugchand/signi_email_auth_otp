@@ -5,10 +5,9 @@ import pytest
 def test_db_uri():
     assert hasattr(config, "DB_URL")
     assert isinstance(config.DB_URL, str)
-    assert (
-        config.DB_URL.startswith("sqlite://") or 
-        config.DB_URL.startswith("postgresql://")
-        )
+    assert config.DB_URL.startswith("sqlite://") or config.DB_URL.startswith(
+        "postgresql://"
+    )
 
 
 def test_otp_expiry_seconds():
@@ -66,8 +65,7 @@ def test_get_env_returns_env_value(monkeypatch):
 
 def test_get_env_returns_default(monkeypatch):
     monkeypatch.delenv("TEST_ENV_VAR", raising=False)
-    assert config.get_env("TEST_ENV_VAR", 
-                          default="default_value") == "default_value"
+    assert config.get_env("TEST_ENV_VAR", default="default_value") == "default_value"
 
 
 def test_get_env_raises_if_missing_and_no_default(monkeypatch):

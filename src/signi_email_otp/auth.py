@@ -30,7 +30,7 @@ def request_otp(email) -> str:
                 FROM otp
                 WHERE email = %s
                 """
-                ),
+            ),
             (email,),
         )
         row = result.fetchone()
@@ -50,7 +50,7 @@ def request_otp(email) -> str:
                         (email,),
                     )
                     logger.info(
-                       (
+                        (
                             (
                                 f"Reusing existing OTP for {email}, "
                                 f"age: {otp_age} seconds"
@@ -69,9 +69,7 @@ def request_otp(email) -> str:
                         "Maximum attempts exceeded. Please try again later."
                     )
             else:
-                logger.info(
-                    f"Existing OTP for {email} expired, generating new OTP."
-                )
+                logger.info(f"Existing OTP for {email} expired, generating new OTP.")
                 otp = str(random.randint(100000, 999999))
                 session.execute(
                     text(
@@ -83,10 +81,7 @@ def request_otp(email) -> str:
                     (otp, email),
                 )
         else:
-            logger.debug(
-                f"No existing OTP found for {email}, "
-                "generating new OTP."
-            )
+            logger.debug(f"No existing OTP found for {email}, " "generating new OTP.")
             otp = str(random.randint(100000, 999999))
             session.execute(
                 text(
@@ -116,7 +111,7 @@ def verify_otp(email, otp):
         session.execute(
             text(
                 """
-                DELETE FROM otp 
+                DELETE FROM otp
                 WHERE created_at < NOW() - INTERVAL '%s seconds'
             """
             ),
@@ -145,12 +140,8 @@ def verify_otp(email, otp):
 
         otp_age = (datetime.now(timezone.utc) - created_at).total_seconds()
         if otp_age > OTP_EXPIRY_SECONDS:
-            logger.warning(
-                f"OTP expired for email: {email}"
-            )
-            raise OTPExpiredException(
-                "OTP has expired"
-            )
+            logger.warning(f"OTP expired for email: {email}")
+            raise OTPExpiredException("OTP has expired")
 
         # Delete the OTP after successful verification
         session.execute(
@@ -162,12 +153,13 @@ def verify_otp(email, otp):
             (email,),
         )
         # Generate and store JWT
-        token, exp_time = generate_jwt(email, JWT_SECRET,
-                                       JWT_ALGORITHM, JWT_EXPIRY_SECONDS)
+        token, exp_time = generate_jwt(
+            email, JWT_SECRET, JWT_ALGORITHM, JWT_EXPIRY_SECONDS
+        )
         session.execute(
             text(
-                    """
-                    INSERT INTO refresh_tokens  
+                """
+                    INSERT INTO refresh_tokens
                     (refresh_token, email, created_at, expires_at)
                     VALUES (%s, %s, NOW(), %s)
                     ON CONFLICT (email) DO UPDATE SET
@@ -175,7 +167,7 @@ def verify_otp(email, otp):
                         created_at = NOW(),
                         expires_at = EXCLUDED.expires_at
                     """
-                ),
+            ),
             (token, email, exp_time),
         )
 

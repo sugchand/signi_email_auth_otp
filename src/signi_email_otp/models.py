@@ -20,9 +20,7 @@ class OTP(Base):
         DateTime(timezone=True), default=utcnow_timeaware
     )
     used: Mapped[bool] = mapped_column(Boolean, default=False)
-    attempts_left: Mapped[int] = mapped_column(
-        Integer, default=3, nullable=False
-    )
+    attempts_left: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
 
 
 class JWT(Base):

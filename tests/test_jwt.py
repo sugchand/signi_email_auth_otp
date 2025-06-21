@@ -26,6 +26,7 @@ def test_decode_jwt_invalid_signature():
 
 def test_decode_jwt_expired():
     import time
+
     payload = {"user_id": 123}
     token, _ = generate_jwt(payload, SECRET, ALGORITHM, 1)
     time.sleep(2)

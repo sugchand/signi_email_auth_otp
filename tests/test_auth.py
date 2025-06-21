@@ -16,6 +16,7 @@ def mock_session():
 
         def fetchone(self):
             return self._row
+
     session = MagicMock()
     session.execute.return_value = DummyResult()
     return session
@@ -70,11 +71,8 @@ def test_request_otp_expired(mock_randint, mock_get_db, mock_session):
     mock_result = MagicMock()
 
     # Simulate existing OTP, expired
-    created_at = (
-        datetime.now(timezone.utc)
-        - timedelta(
-            seconds=auth.OTP_EXPIRY_SECONDS + 10
-        )
+    created_at = datetime.now(timezone.utc) - timedelta(
+        seconds=auth.OTP_EXPIRY_SECONDS + 10
     )
     mock_result.fetchone.return_value = ("333333", created_at, 2)
     mock_session.execute.return_value = mock_result
