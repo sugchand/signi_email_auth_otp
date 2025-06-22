@@ -1,0 +1,8 @@
+git+https://<token>:x-oauth-basic@github.com/sugchand/signi_email_auth_otp.git@main#egg=signi_email_auth_otp
+fastapi
+uvicorn
+psycopg2-binary
+SQLAlchemy
+PyJWT
+pytest
+requests
