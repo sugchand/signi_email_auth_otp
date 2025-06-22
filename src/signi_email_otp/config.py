@@ -3,12 +3,15 @@ from signi_email_otp.core import logger
 
 
 def get_env(key, default=None):
-    if key in os.environ:
-        logger.debug(f"Environment variable {key} found: {os.environ[key]}")
-        return os.environ[key]
-    if default is not None:
-        logger.debug(f"Environment variable {key} not found, using default: {default}")
-        return default
+    value = os.environ.get(key, default)
+    if value is not None:
+        if key in os.environ:
+            logger.info(f"Environment variable {key} found: {value}")
+        else:
+            logger.warning(
+                f"Environment variable {key} not found, using default: {default}"
+            )
+        return value
     raise KeyError(f"{key} not found in environment")
 
 
@@ -29,7 +32,7 @@ SMTP_FROM_EMAIL = get_env("SMTP_FROM_EMAIL", "test@test.com")
 SMTP_FROM_PASSWORD = get_env("SMTP_PASSWORD", "changeme")
 
 # Database configuration
-DB_URL = get_env("DATABASE_URL", "postgresql://user:pass@localhost:5432/auth_db")
+DB_URL = get_env("DB_URL", "postgresql+psycopg2://otpuser:otppass@db:5432/otpdb")
 MAX_CONN = int(get_env("DB_POOL_MAX_CONN", 5))
 
 

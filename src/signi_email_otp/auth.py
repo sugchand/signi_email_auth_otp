@@ -20,8 +20,10 @@ from sqlalchemy import text
 
 
 def request_otp(email) -> str:
+    logger.info(f"Requesting OTP for email: {email}")
     otp: str = ""
     with get_db() as session:
+        logger.debug(f"Requesting OTP for email: {email} and db session: {JWT_SECRET}")
         # Check existing valid OTP
         result = session.execute(
             text(
@@ -78,7 +80,7 @@ def request_otp(email) -> str:
                         WHERE email = %s
                         """
                     ),
-                    (otp, email),
+                    ({"otp_code": otp}, {"email": email}),
                 )
         else:
             logger.debug(f"No existing OTP found for {email}, " "generating new OTP.")
@@ -90,7 +92,7 @@ def request_otp(email) -> str:
                     VALUES (%s, %s, NOW())
                     """,
                 ),
-                (email, otp),
+                ({"email": email}, {"otp_code": otp}),
             )
             logger.info(f"Generated new OTP for {email}")
     return otp

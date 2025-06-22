@@ -6,7 +6,7 @@ def test_db_uri():
     assert hasattr(config, "DB_URL")
     assert isinstance(config.DB_URL, str)
     assert config.DB_URL.startswith("sqlite://") or config.DB_URL.startswith(
-        "postgresql://"
+        "postgresql+psycopg2://"
     )
 
 
