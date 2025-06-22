@@ -1,5 +1,5 @@
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from .email_service import send_otp_email
 from .jwt_utils import generate_jwt
 from .config import (
@@ -9,6 +9,7 @@ from .config import (
     JWT_ALGORITHM,
 )
 from .db import get_db
+from .models import OTP, JWT
 from .core import logger
 from .exception import (
     RateLimitOTPExceededException,
@@ -16,7 +17,6 @@ from .exception import (
     InvalidOTPException,
     OTPExpiredException,
 )
-from sqlalchemy import text
 
 
 def request_otp(email) -> str:
@@ -25,32 +25,17 @@ def request_otp(email) -> str:
     with get_db() as session:
         logger.debug(f"Requesting OTP for email: {email} and db session: {JWT_SECRET}")
         # Check existing valid OTP
-        result = session.execute(
-            text(
-                """
-                SELECT otp_code, created_at, attempts_left
-                FROM otp
-                WHERE email = :email
-                """
-            ),
-            {"email": email},
-        )
-        row = result.fetchone()
+        otp_obj = session.query(OTP).filter_by(email=email).first()
 
-        if row:
-            existing_otp, created_at, attempts_left = row
+        if otp_obj:
+            existing_otp = otp_obj.otp_code
+            created_at = otp_obj.created_at
+            attempts_left = otp_obj.attempts_left
             otp_age = (datetime.now(timezone.utc) - created_at).total_seconds()
             if otp_age < OTP_EXPIRY_SECONDS:
                 if attempts_left > 0:
-                    session.execute(
-                        text(
-                            """
-                            UPDATE otp SET attempts_left = attempts_left - 1
-                            WHERE email = :email
-                            """
-                        ),
-                        {"email": email},
-                    )
+                    otp_obj.attempts_left -= 1
+                    session.add(otp_obj)
                     logger.info(
                         (
                             (
@@ -73,27 +58,20 @@ def request_otp(email) -> str:
             else:
                 logger.info(f"Existing OTP for {email} expired, generating new OTP.")
                 otp = str(random.randint(100000, 999999))
-                session.execute(
-                    text(
-                        """
-                        UPDATE otp SET otp_code = :otp_code, created_at = NOW()
-                        WHERE email = :email
-                        """
-                    ),
-                    {"otp_code": otp, "email": email},
-                )
+                otp_obj.otp_code = otp
+                otp_obj.created_at = datetime.now(timezone.utc)
+                otp_obj.attempts_left = 3
+                session.add(otp_obj)
         else:
             logger.debug(f"No existing OTP found for {email}, " "generating new OTP.")
             otp = str(random.randint(100000, 999999))
-            session.execute(
-                text(
-                    """
-                    INSERT INTO otp (email, otp_code, created_at)
-                    VALUES (:email, :otp_code, NOW())
-                    """
-                ),
-                {"email": email, "otp_code": otp},
+            otp_obj = OTP(
+                email=email,
+                otp_code=otp,
+                created_at=datetime.now(timezone.utc),
+                attempts_left=3,
             )
+            session.add(otp_obj)
             logger.info(f"Generated new OTP for {email}")
     return otp
 
@@ -110,31 +88,17 @@ def request_otp_and_send_email(email):
 def verify_otp(email, otp):
     with get_db() as session:
         # Cleanup expired OTPs
-        session.execute(
-            text(
-                """
-                DELETE FROM otp
-                WHERE created_at < NOW() - INTERVAL :interval
-                """
-            ),
-            {"interval": f"{OTP_EXPIRY_SECONDS} seconds"},
+        expiry_time = datetime.now(timezone.utc) - timedelta(seconds=OTP_EXPIRY_SECONDS)
+        session.query(OTP).filter(OTP.created_at < expiry_time).delete(
+            synchronize_session=False
         )
 
-        # Fetch valid OTP
-        session.execute(
-            text(
-                """
-                SELECT otp_code, created_at FROM otp WHERE email = :email
-                """
-            ),
-            {"email": email},
-        )
-        row = session.fetchone()
-
-        if not row:
+        otp_obj = session.query(OTP).filter_by(email=email).first()
+        if not otp_obj:
             logger.warning(f"OTP not found for email: {email}")
             raise OTPNotFoundException("OTP not found for this email")
-        db_otp, created_at = row
+        db_otp = otp_obj.otp_code
+        created_at = otp_obj.created_at
 
         if db_otp != otp:
             logger.warning(f"Invalid OTP for email: {email}")
@@ -145,32 +109,26 @@ def verify_otp(email, otp):
             logger.warning(f"OTP expired for email: {email}")
             raise OTPExpiredException("OTP has expired")
 
-        # Delete the OTP after successful verification
-        session.execute(
-            text(
-                """
-                DELETE FROM otp WHERE email = :email
-                """
-            ),
-            {"email": email},
-        )
-        # Generate and store JWT
-        token, exp_time = generate_jwt(
-            email, JWT_SECRET, JWT_ALGORITHM, JWT_EXPIRY_SECONDS
-        )
-        session.execute(
-            text(
-                """
-                INSERT INTO refresh_tokens
-                (refresh_token, email, created_at, expires_at)
-                VALUES
-                (:refresh_token, :email, NOW(), :expires_at)
-                ON CONFLICT (email) DO UPDATE SET
-                refresh_token = EXCLUDED.refresh_token,
-                created_at = NOW(),
-                expires_at = EXCLUDED.expires_at
-                """
-            ),
-            {"refresh_token": token, "email": email, "expires_at": exp_time},
-        )
+        # Delete the OTP after successful verification, to avoid reuse
+        session.delete(otp_obj)
+
+        # Lets first check for an existing JWT for the email
+        # assume if user logged in from different device, we will reuse the JWT.
+        jwt_obj = session.query(JWT).filter_by(email=email).first()
+        if jwt_obj:
+            logger.info(f"JWT already exists for {email}, reusing it.")
+            token = jwt_obj.refresh_token
+        else:
+            logger.info(f"No JWT found for {email}, generating a new one.")
+            # Generate and store JWT
+            token, exp_time = generate_jwt(
+                email, JWT_SECRET, JWT_ALGORITHM, JWT_EXPIRY_SECONDS
+            )
+            jwt_obj = JWT(
+                email=email,
+                refresh_token=token,
+                created_at=datetime.now(timezone.utc),
+                expires_at=exp_time,
+            )
+            session.add(jwt_obj)
     return token
