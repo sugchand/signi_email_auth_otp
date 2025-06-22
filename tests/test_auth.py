@@ -27,12 +27,10 @@ def mock_session():
 def test_request_otp_new(mock_randint, mock_get_db):
     mock_randint.return_value = 123456
 
-    # Create a mock session and a mock result
     mock_session = MagicMock()
     mock_result = MagicMock()
     mock_result.fetchone.return_value = None  # Simulate no existing OTP
 
-    # session.execute() returns mock_result
     mock_session.execute.return_value = mock_result
     mock_get_db.return_value.__enter__.return_value = mock_session
 
@@ -46,14 +44,11 @@ def test_request_otp_new(mock_randint, mock_get_db):
 def test_request_otp_reuse_valid(mock_randint, mock_get_db):
     mock_randint.return_value = 654321
 
-    # Create a mock session and a mock result
     mock_session = MagicMock()
     mock_result = MagicMock()
-    # Simulate existing OTP, not expired, attempts left
     created_at = datetime.now(timezone.utc) - timedelta(seconds=10)
     mock_result.fetchone.return_value = ("111111", created_at, 2)
 
-    # session.execute() returns mock_result
     mock_session.execute.return_value = mock_result
     mock_get_db.return_value.__enter__.return_value = mock_session
 
@@ -64,13 +59,11 @@ def test_request_otp_reuse_valid(mock_randint, mock_get_db):
 
 @patch("signi_email_otp.auth.get_db")
 @patch("signi_email_otp.auth.random.randint")
-def test_request_otp_expired(mock_randint, mock_get_db, mock_session):
+def test_request_otp_expired(mock_randint, mock_get_db):
     mock_randint.return_value = 222222
 
     mock_session = MagicMock()
     mock_result = MagicMock()
-
-    # Simulate existing OTP, expired
     created_at = datetime.now(timezone.utc) - timedelta(
         seconds=auth.OTP_EXPIRY_SECONDS + 10
     )
@@ -84,12 +77,11 @@ def test_request_otp_expired(mock_randint, mock_get_db, mock_session):
 
 @patch("signi_email_otp.auth.get_db")
 @patch("signi_email_otp.auth.random.randint")
-def test_request_otp_rate_limit(mock_randint, mock_get_db, mock_session):
+def test_request_otp_rate_limit(mock_randint, mock_get_db):
     mock_randint.return_value = 444444
 
     mock_session = MagicMock()
     mock_result = MagicMock()
-    # Simulate existing OTP, not expired, no attempts left
     created_at = datetime.now(timezone.utc) - timedelta(seconds=10)
     mock_result.fetchone.return_value = ("444444", created_at, 0)
     mock_session.execute.return_value = mock_result
