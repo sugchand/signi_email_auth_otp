@@ -30,7 +30,7 @@ def request_otp(email) -> str:
                 """
                 SELECT otp_code, created_at, attempts_left
                 FROM otp
-                WHERE email = %s
+                WHERE email = :email
                 """
             ),
             {"email": email},
@@ -46,7 +46,7 @@ def request_otp(email) -> str:
                         text(
                             """
                             UPDATE otp SET attempts_left = attempts_left - 1
-                            WHERE email = %s
+                            WHERE email = :email
                             """
                         ),
                         {"email": email},
@@ -76,8 +76,8 @@ def request_otp(email) -> str:
                 session.execute(
                     text(
                         """
-                        UPDATE otp SET otp_code = %s, created_at = NOW()
-                        WHERE email = %s
+                        UPDATE otp SET otp_code = :otp_code, created_at = NOW()
+                        WHERE email = :email
                         """
                     ),
                     {"otp_code": otp, "email": email},
@@ -88,9 +88,9 @@ def request_otp(email) -> str:
             session.execute(
                 text(
                     """
-                    INSERT INTO otp (email, otp, created_at)
-                    VALUES (%s, %s, NOW())
-                    """,
+                    INSERT INTO otp (email, otp_code, created_at)
+                    VALUES (:email, :otp_code, NOW())
+                    """
                 ),
                 {"email": email, "otp_code": otp},
             )
@@ -124,7 +124,7 @@ def verify_otp(email, otp):
         session.execute(
             text(
                 """
-                SELECT otp_code, created_at FROM otp WHERE email = %s
+                SELECT otp_code, created_at FROM otp WHERE email = :email
                 """
             ),
             {"email": email},
@@ -149,7 +149,7 @@ def verify_otp(email, otp):
         session.execute(
             text(
                 """
-                DELETE FROM otp WHERE email = %s
+                DELETE FROM otp WHERE email = :email
                 """
             ),
             {"email": email},
@@ -161,16 +161,16 @@ def verify_otp(email, otp):
         session.execute(
             text(
                 """
-                    INSERT INTO refresh_tokens
-                    (refresh_token, email, created_at, expires_at)
-                    VALUES (%s, %s, NOW(), %s)
-                    ON CONFLICT (email) DO UPDATE SET
-                        token = token,
-                        created_at = NOW(),
-                        expires_at = EXCLUDED.expires_at
-                    """
+                INSERT INTO refresh_tokens
+                (refresh_token, email, created_at, expires_at)
+                VALUES
+                (:refresh_token, :email, NOW(), :expires_at)
+                ON CONFLICT (email) DO UPDATE SET
+                refresh_token = EXCLUDED.refresh_token,
+                created_at = NOW(),
+                expires_at = EXCLUDED.expires_at
+                """
             ),
             {"refresh_token": token, "email": email, "expires_at": exp_time},
         )
-
     return token
