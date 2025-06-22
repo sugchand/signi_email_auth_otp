@@ -33,7 +33,7 @@ def request_otp(email) -> str:
                 WHERE email = %s
                 """
             ),
-            (email,),
+            {"email": email},
         )
         row = result.fetchone()
 
@@ -49,7 +49,7 @@ def request_otp(email) -> str:
                             WHERE email = %s
                             """
                         ),
-                        (email,),
+                        {"email": email},
                     )
                     logger.info(
                         (
@@ -80,7 +80,7 @@ def request_otp(email) -> str:
                         WHERE email = %s
                         """
                     ),
-                    ({"otp_code": otp}, {"email": email}),
+                    {"otp_code": otp, "email": email},
                 )
         else:
             logger.debug(f"No existing OTP found for {email}, " "generating new OTP.")
@@ -92,7 +92,7 @@ def request_otp(email) -> str:
                     VALUES (%s, %s, NOW())
                     """,
                 ),
-                ({"email": email}, {"otp_code": otp}),
+                {"email": email, "otp_code": otp},
             )
             logger.info(f"Generated new OTP for {email}")
     return otp
@@ -114,10 +114,10 @@ def verify_otp(email, otp):
             text(
                 """
                 DELETE FROM otp
-                WHERE created_at < NOW() - INTERVAL '%s seconds'
-            """
+                WHERE created_at < NOW() - INTERVAL :interval
+                """
             ),
-            (OTP_EXPIRY_SECONDS,),
+            {"interval": f"{OTP_EXPIRY_SECONDS} seconds"},
         )
 
         # Fetch valid OTP
@@ -127,7 +127,7 @@ def verify_otp(email, otp):
                 SELECT otp_code, created_at FROM otp WHERE email = %s
                 """
             ),
-            (email,),
+            {"email": email},
         )
         row = session.fetchone()
 
@@ -152,7 +152,7 @@ def verify_otp(email, otp):
                 DELETE FROM otp WHERE email = %s
                 """
             ),
-            (email,),
+            {"email": email},
         )
         # Generate and store JWT
         token, exp_time = generate_jwt(
@@ -170,7 +170,7 @@ def verify_otp(email, otp):
                         expires_at = EXCLUDED.expires_at
                     """
             ),
-            (token, email, exp_time),
+            {"refresh_token": token, "email": email, "expires_at": exp_time},
         )
 
     return token
