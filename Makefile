@@ -1,4 +1,4 @@
-.PHONY: help venv install dev test coverage lint format clean
+.PHONY: help venv install dev test coverage lint format clean build
 
 PIP := .venv/bin/pip
 PYTHON := .venv/bin/python
@@ -19,6 +19,7 @@ help:
 	@echo "  make format      Run black"
 	@echo "  make typecheck   Run mypy static type checker"
 	@echo "  make clean       Remove cache and venv"
+	@echo "  make build       Build the package for distribution"
 
 venv:
 	@test -d .venv || python3 -m venv .venv
@@ -48,3 +49,8 @@ typecheck:
 clean:
 	rm -rf .venv __pycache__ .pytest_cache .mypy_cache .coverage htmlcov
 	find . -type d -name '__pycache__' -exec rm -r {} +
+
+build:
+	rm -rf dist
+	$(PYTHON) -m build --sdist --wheel
+
